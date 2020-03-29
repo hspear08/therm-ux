@@ -11,6 +11,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import csv
 import threading
+from collections import OrderedDict
 
 
 # Semaphore to enable logging to CSV file
@@ -25,6 +26,9 @@ TEMP_IMG_FILE="temperature.png"
 base_dir = '/sys/bus/w1/devices/'
 device_folder = glob.glob(base_dir + '28*') #[0]
 #device_file = device_folder + '/w1_slave'
+device_map = dict()
+device_map["/sys/bus/w1/devices/28-00000ab375b7"] = "Shiny"
+device_map["/sys/bus/w1/devices/28-000008714eb0"] = "Gimpy"
 
 #---------------------------------------------------
 # Read raw temperature data
@@ -43,10 +47,11 @@ def read_temp(device):
     name = device
 
     #substitute names
-    if ( name == "/sys/bus/w1/devices/28-00000ab375b7" ):
-        name = "Shiny"
-    elif ( name == "/sys/bus/w1/devices/28-000008714eb0" ):
-        name = "Gimpy"
+    name = device_map[device]
+    #if ( name == "/sys/bus/w1/devices/28-00000ab375b7" ):
+    #    name = "Shiny"
+    #elif ( name == "/sys/bus/w1/devices/28-000008714eb0" ):
+    #    name = "Gimpy"
         
     while lines[0].strip()[-3:] != 'YES':
         time.sleep(0.2)
@@ -55,7 +60,8 @@ def read_temp(device):
     if equals_pos != -1:
         temp_string = lines[1][equals_pos+2:]
         temp_c = float(temp_string) / 1000.0
-        temp_f = temp_c * 9.0 / 5.0 + 32.0
+        #temp_f = temp_c * 9.0 / 5.0 + 32.0
+        temp_f = ((float(temp_string) * 9.0) / 5.0) / 1000.0 + 32.0
         return temp_c, temp_f, name
 #---------------------------------------------------
 
@@ -66,7 +72,7 @@ def getTempHTMLStr():
     tempStr = now.strftime("%m/%d/%Y %H:%M:%S <br>")
     for d in device_folder:
         (c, f, name) = read_temp(d)
-        buf = "[ %d C ] [ %d F ]  %s <br>" % (c, f, name)
+        buf = "[ %3.2f C ] [ %3.2f F ]  %s <br>" % (c, f, name)
         tempStr = tempStr + buf
     return tempStr
 #---------------------------------------------------
@@ -77,7 +83,7 @@ def saveTempToCSV(t):
     tempStr = "%d, " % t
     for d in device_folder:
         (c, f, name) = read_temp(d)
-        buf = "%d, " % (f)
+        buf = "%s, %3.2f, " % (name, f)
         tempStr = tempStr + buf
     tempStr = tempStr + "\n"
     f = open(TEMP_CSV_FILE,"a")
@@ -91,16 +97,32 @@ def savePlotImage():
     t=[] # time stamp
     p1=[] # probe1 temperature (Fahrenheit)
     p2=[] # probe2 temperature (Fahrenheit)
+    name1="" # probe1 name
+    name2="" # probe2 name
+    color1="red" # probe1 plot color
+    color2="blue" # probe2 plot color
     with open(TEMP_CSV_FILE, 'r') as csvfile:
         plots= csv.reader(csvfile, delimiter=',')
         for row in plots:
             t.append(int(row[0]))
-            p1.append(int(row[1]))
-            p2.append(int(row[2]))
-    plt.plot(t, p1)
-    plt.plot(t, p2)
+            name1=row[1]
+            p1.append(float(row[2]))
+            name2=row[3]
+            p2.append(float(row[4]))
+    plt.plot(t, p1, color=color1, label=name1)
+    plt.plot(t, p2, color=color2, label=name2)
+
+    # This ridiculous code is needed to prevent labels from showing
+    # up multiple times in the legend
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = OrderedDict(zip(labels, handles))
+    #plt.legend(by_label.values(), by_label.keys(), loc="best")
+    plt.legend(by_label.values(), by_label.keys(), 
+               bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+
     plt.xlabel('Time')
-    plt.ylabel('Temperature')
+    plt.ylabel('Temperature(F)')
     #plt.show()
     plt.savefig(TEMP_IMG_FILE)
 #---------------------------------------------------

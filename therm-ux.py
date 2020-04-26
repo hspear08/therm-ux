@@ -125,6 +125,9 @@ def savePlotImage():
     plt.ylabel('Temperature(F)')
     #plt.show()
     plt.savefig(TEMP_IMG_FILE)
+    plt.clf()
+    plt.cla()
+    plt.close()
 #---------------------------------------------------
 
 

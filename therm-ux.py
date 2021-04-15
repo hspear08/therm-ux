@@ -74,14 +74,10 @@ def getTempHTMLStr():
         buf = "[ %3.2f C ] [ %3.2f F ]  %s" % (c, f, name)
         tempArr.append(buf)
     if tempLogEnable:
-        #tempStr = tempStr + '<a href="endplot" target="blank"><button>Stop Plot</button></a><br>'
-        # Add a different string to the image url to force the browser not to cache the image, the string will be ignored otherwise
-        #tempStr = tempStr + '<img src="/img/temperature.png?' + str(time.time()) + '" alt="temperature plot">'
         buttonText = 'Stop Plot'
         buttonUrl = 'endplot'
         imgUrl = '/img/temperature.png?' + str(time.time())
     else:
-        #tempStr = tempStr + '<a href="startplot" target="blank"><button>Start Plot</button></a><br>'
         buttonText = 'Start Plot'
         buttonUrl = 'startplot'
         imgUrl = ''

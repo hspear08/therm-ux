@@ -2,7 +2,7 @@ import glob
 import time
 import curses
 #from curses import wrapper
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, render_template
 from flask import send_file
 from datetime import datetime
 
@@ -67,18 +67,25 @@ def read_temp(device):
 # Return temperature data per probe as HTML string
 def getTempHTMLStr():
     now = datetime.now()
-    tempStr = now.strftime("%m/%d/%Y %H:%M:%S <br>")
+    timeStr = now.strftime("%m/%d/%Y %H:%M:%S")
+    tempArr = list()
     for d in device_folder:
         (c, f, name) = read_temp(d)
-        buf = "[ %3.2f C ] [ %3.2f F ]  %s <br>" % (c, f, name)
-        tempStr = tempStr + buf
+        buf = "[ %3.2f C ] [ %3.2f F ]  %s" % (c, f, name)
+        tempArr.append(buf)
     if tempLogEnable:
-        tempStr = tempStr + '<a href="endplot" target="blank"><button>Stop Plot</button></a><br>'
+        #tempStr = tempStr + '<a href="endplot" target="blank"><button>Stop Plot</button></a><br>'
         # Add a different string to the image url to force the browser not to cache the image, the string will be ignored otherwise
-        tempStr = tempStr + '<img src="/img/temperature.png?' + str(time.time()) + '" alt="temperature plot">'
+        #tempStr = tempStr + '<img src="/img/temperature.png?' + str(time.time()) + '" alt="temperature plot">'
+        buttonText = 'Stop Plot'
+        buttonUrl = 'endplot'
+        imgUrl = '/img/temperature.png?' + str(time.time())
     else:
-        tempStr = tempStr + '<a href="startplot" target="blank"><button>Start Plot</button></a><br>'
-    return tempStr
+        #tempStr = tempStr + '<a href="startplot" target="blank"><button>Start Plot</button></a><br>'
+        buttonText = 'Start Plot'
+        buttonUrl = 'startplot'
+        imgUrl = ''
+    return render_template('index.html', time=timeStr, temps=tempArr, buttonText=buttonText, buttonUrl=buttonUrl, imgUrl=imgUrl)
 #---------------------------------------------------
 
 #---------------------------------------------------

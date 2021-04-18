@@ -1,0 +1,23 @@
+<html>
+	<head>
+		<script type = "text/JavaScript">
+			<!--
+			function AutoRefresh( t ) {
+				setTimeout("location.reload(true);", t);
+			}
+			//-->
+		</script>
+	</head>
+	<body onload = "JavaScript:AutoRefresh(5000);">
+		<p>Last update: {{ time }}</p><br>
+		{% for t in temps %}
+			<p>{{ t }} </p><br>
+		{% endfor %}
+		<a href="{{ buttonUrl }}" target="blank"><button>{{ buttonText }}</button></a><br>
+		<p>This page will refresh every 5 seconds.</p>
+		{% if imgUrl != '' %}
+			<img src="{{ imgUrl }}" alt="temperature plot">
+		{% endif %}
+	</body>
+</html>
+

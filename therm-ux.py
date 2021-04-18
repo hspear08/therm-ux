@@ -2,7 +2,7 @@ import glob
 import time
 import curses
 #from curses import wrapper
-from flask import Flask
+from flask import Flask, send_from_directory, render_template
 from flask import send_file
 from datetime import datetime
 
@@ -22,6 +22,7 @@ TEMP_POLL_INTERVAL=15  # seconds
 TEMP_POLL_MAX=100000 # Max number of data points to collect
 TEMP_CSV_FILE="temperature.csv"
 TEMP_IMG_FILE="temperature.png"
+TEMP_IMG_PATH="img/" + TEMP_IMG_FILE
 
 base_dir = '/sys/bus/w1/devices/'
 device_folder = glob.glob(base_dir + '28*') #[0]
@@ -47,11 +48,8 @@ def read_temp(device):
     name = device
 
     #substitute names
-    name = device_map[device]
-    #if ( name == "/sys/bus/w1/devices/28-00000ab375b7" ):
-    #    name = "Shiny"
-    #elif ( name == "/sys/bus/w1/devices/28-000008714eb0" ):
-    #    name = "Gimpy"
+    if device in device_map:
+        name = device_map[device]
         
     while lines[0].strip()[-3:] != 'YES':
         time.sleep(0.2)
@@ -69,12 +67,21 @@ def read_temp(device):
 # Return temperature data per probe as HTML string
 def getTempHTMLStr():
     now = datetime.now()
-    tempStr = now.strftime("%m/%d/%Y %H:%M:%S <br>")
+    timeStr = now.strftime("%m/%d/%Y %H:%M:%S")
+    tempArr = list()
     for d in device_folder:
         (c, f, name) = read_temp(d)
-        buf = "[ %3.2f C ] [ %3.2f F ]  %s <br>" % (c, f, name)
-        tempStr = tempStr + buf
-    return tempStr
+        buf = "[ %3.2f C ] [ %3.2f F ]  %s" % (c, f, name)
+        tempArr.append(buf)
+    if tempLogEnable:
+        buttonText = 'Stop Plot'
+        buttonUrl = 'endplot'
+        imgUrl = '/img/temperature.png?' + str(time.time())
+    else:
+        buttonText = 'Start Plot'
+        buttonUrl = 'startplot'
+        imgUrl = ''
+    return render_template('index.html', time=timeStr, temps=tempArr, buttonText=buttonText, buttonUrl=buttonUrl, imgUrl=imgUrl)
 #---------------------------------------------------
 
 #---------------------------------------------------
@@ -107,10 +114,12 @@ def savePlotImage():
             t.append(int(row[0]))
             name1=row[1]
             p1.append(float(row[2]))
-            name2=row[3]
-            p2.append(float(row[4]))
+            if len(row) > 4:
+                name2=row[3]
+                p2.append(float(row[4]))
     plt.plot(t, p1, color=color1, label=name1)
-    plt.plot(t, p2, color=color2, label=name2)
+    if len(p2) > 0:
+        plt.plot(t, p2, color=color2, label=name2)
 
     # This ridiculous code is needed to prevent labels from showing
     # up multiple times in the legend
@@ -124,7 +133,7 @@ def savePlotImage():
     plt.xlabel('Time')
     plt.ylabel('Temperature(F)')
     #plt.show()
-    plt.savefig(TEMP_IMG_FILE)
+    plt.savefig(TEMP_IMG_PATH)
     plt.clf()
     plt.cla()
     plt.close()
@@ -163,7 +172,7 @@ tempLog_thread.start()
 
 
 # Declare the Flask app             
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='')
 
 # Flask handlers
 @app.route('/')
@@ -187,6 +196,12 @@ def plot():
     savePlotImage()
     #return "Image saved"
     return send_file(TEMP_IMG_FILE, mimetype='image/png')
+
+@app.route('/img/<path:filename>')
+def send_img(filename):
+    if filename == TEMP_IMG_FILE:
+        savePlotImage()
+    return send_from_directory('img', filename)
 
 @app.route('/hello')
 def hello():
